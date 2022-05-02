@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformer import Encoder, Decoder, PostNet
-from .modules import VarianceAdaptor
+from .modules import VarianceAdaptor, AdversarialClassifier
 from utils.tools import get_mask_from_lengths
 
 
@@ -40,6 +40,14 @@ class FastSpeech2(nn.Module):
                 model_config["transformer"]["encoder_hidden"],
             )
 
+        self.speaker_classifier = None
+        if "speaker_classifier" in model_config:
+            self.speaker_classifier = \
+                AdversarialClassifier(model_config["transformer"]["encoder_hidden"],
+                                      n_speaker,
+                                      model_config["speaker_classifier"]["hidden_dims"],
+                                      model_config["speaker_classifier"]["rev_scale"])
+
     def forward(
         self,
         speakers,
@@ -63,7 +71,11 @@ class FastSpeech2(nn.Module):
             else None
         )
 
-        output = self.encoder(texts, src_masks)
+        output = self.encoder(texts, src_masks) # B, T, embed_dim
+
+        speaker_outputs = None
+        if self.speaker_classifier is not None:
+            speaker_outputs = self.speaker_classifier(output) # B, T, n_speaker
 
         if self.speaker_emb is not None:
             output = output + self.speaker_emb(speakers).unsqueeze(1).expand(
@@ -107,4 +119,5 @@ class FastSpeech2(nn.Module):
             mel_masks,
             src_lens,
             mel_lens,
+            speaker_outputs,
         )

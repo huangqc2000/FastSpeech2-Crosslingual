@@ -76,6 +76,8 @@ def log(
         logger.add_scalar("Loss/pitch_loss", losses[3], step)
         logger.add_scalar("Loss/energy_loss", losses[4], step)
         logger.add_scalar("Loss/duration_loss", losses[5], step)
+        if len(losses) == 7:
+            logger.add_scalar("Loss/speaker_loss", losses[6], step)
 
     if fig is not None:
         logger.add_figure(tag, fig)

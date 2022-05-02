@@ -15,16 +15,22 @@ class FastSpeech2Loss(nn.Module):
         ]
         self.mse_loss = nn.MSELoss()
         self.mae_loss = nn.L1Loss()
+        self.softmax_loss = nn.CrossEntropyLoss()
+        self.speaker_loss_weight = model_config["speaker_classifier"]["speaker_loss_weight"] if "speaker_classifier" in model_config else 0
 
     def forward(self, inputs, predictions):
         (
+            speaker_targets,
+            _,
+            _,
+            _,
             mel_targets,
             _,
             _,
             pitch_targets,
             energy_targets,
             duration_targets,
-        ) = inputs[6:]
+        ) = inputs[2:]
         (
             mel_predictions,
             postnet_mel_predictions,
@@ -36,6 +42,7 @@ class FastSpeech2Loss(nn.Module):
             mel_masks,
             _,
             _,
+            speaker_predictions,
         ) = predictions
         src_masks = ~src_masks
         mel_masks = ~mel_masks
@@ -82,6 +89,13 @@ class FastSpeech2Loss(nn.Module):
             mel_loss + postnet_mel_loss + duration_loss + pitch_loss + energy_loss
         )
 
+        speaker_loss = None
+        if speaker_predictions is not None:
+            speaker_targets = speaker_targets.unsqueeze(1).repeat(1, speaker_predictions.size(1)) # B, T
+            speaker_predictions = speaker_predictions.transpose(1, 2) # B, T, n_speaker -> B, n_speaker, T
+            speaker_loss = self.softmax_loss(speaker_predictions, speaker_targets)
+            total_loss += speaker_loss * self.speaker_loss_weight
+
         return (
             total_loss,
             mel_loss,
@@ -89,4 +103,5 @@ class FastSpeech2Loss(nn.Module):
             pitch_loss,
             energy_loss,
             duration_loss,
+            speaker_loss,
         )
