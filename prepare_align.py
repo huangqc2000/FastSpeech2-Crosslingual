@@ -2,15 +2,17 @@ import argparse
 
 import yaml
 
-from preprocessor import ljspeech, aishell3, libritts
+from preprocessor import ljspeech, aishell3, libritts, aishell3_libritts
 
 
 def main(config):
-    if "LJSpeech" in config["dataset"]:
+    if "AISHELL3-LibriTTS" in config["dataset"]:
+        aishell3_libritts.prepare_align(config)
+    elif "LJSpeech" in config["dataset"]:
         ljspeech.prepare_align(config)
-    if "AISHELL3" in config["dataset"]:
+    elif "AISHELL3" in config["dataset"]:
         aishell3.prepare_align(config)
-    if "LibriTTS" in config["dataset"]:
+    elif "LibriTTS" in config["dataset"]:
         libritts.prepare_align(config)
 
 
